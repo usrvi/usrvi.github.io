@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arch install</title>
+</head>
+<body>
+<p><strong>Arch with UEFI boot and Hyprland compositor</strong> </p>
+<h4 id="verify-connectivity">Verify connectivity:</h4>
+<p><code>ping archlinux.org</code></p>
+<h4 id="ensure-time-and-date">ensure time and date</h4>
+<p><code>timedatectl</code></p>
+<h4 id="partitioning-primary-disk">Partitioning primary disk</h4>
+<p><code>fdisk /dev/{DEVICE}</code></p>
+<h4 id="uefi-with-gpt-partitions">UEFI with GPT partitions</h4>
+<ol type="1">
+<li><p>Boot: 4GB</p></li>
+<li><p>Swap: double the ram space</p></li>
+<li><p>Root: Reminder</p></li>
+</ol>
+<h4 id="formatting-partitions">Formatting partitions</h4>
+<p>BTRFS</p>
+<p><code>Mkfs.fat -F 32 /dev/sdXx</code></p>
+<p><code>mkswap /dev/sdXx</code></p>
+<p><code>mkfs.btrfs /dev/sdXx</code></p>
+<h4 id="mount-file-systems">Mount file systems</h4>
+<p>Root: <code>mount /dev/sdXx /mnt/</code></p>
+<p>Boot: <code>mount --mkdir /dev/sdXx /mnt/boot/efi</code></p>
+<p>Swap: <code>swapon /dev/sdXx</code></p>
+<h4 id="download-essentials">Download essentials:</h4>
+<pre><code>pacstrap -K /mnt base linux linux-firmware nano intel-ucode hyprland
+polkit nvidia-open nvidia-utils networkmanager man texinfo</code></pre>
+<h4 id="generate-fstab">Generate fstab</h4>
+<p><code>genfstab -L /mnt \&gt;\&gt; /mnt/etc/fstab</code></p>
+<h4 id="chroot-to-the-installed-system">chroot to the installed
+system</h4>
+<p><code>arch-chroot /mnt</code></p>
+<h4 id="set-timezone">Set timezone</h4>
+<p><code>ln -sf /usr/share/zoneinfo/*Region*/*City* /etc/localtime</code></p>
+<h4 id="set-hardware-clock">Set Hardware clock</h4>
+<p><code>hwclock \--systohc</code></p>
+<h4 id="edit-etclocale.gen-to-enable-locales">edit /etc/locale.gen to
+enable locales</h4>
+<p><code>nano locale.gen</code></p>
+<h4 id="create-locale.conf-accordingly">Create locale.conf
+accordingly</h4>
+<p><code>nano locale.conf</code></p>
+<p>LANG=en_US.UTF-8</p>
+<p>LC_TIME= en_US.UTF-8</p>
+<p>LC_MONETARY= en_US.UTF-8</p>
+<h4 id="then-run">Then run</h4>
+<p><code>locale-gen</code></p>
+<h5
+id="when-chrooted-make-sure-that-drm-is-enabled-for-wayland-to-function">When
+chrooted make sure that DRM is enabled for wayland to function</h5>
+<p>properly with Nvidia drivers</p>
+<h4 id="post-install">Post install:</h4>
+<h4 id="enable-multilib">Enable multilib</h4>
+<p><code>nano /etc/pacman.conf</code></p>
+<h4 id="uncomment">Uncomment:</h4>
+<p>[multilib] Include = /etc/pacman.d/mirrorlist</p>
+<h4 id="install-extras">install extras</h4>
+<pre><code>pacman -S lib32-nvidia-utils btrfs-progs sof-firmware networkmanager
+grub efibootmgr yay lightdm lightdm-webkit2-greeter</code></pre>
+<h4
+id="lib32-nvidia-utils-32bit-application-support-for-nvidia-driver">Lib32-nvidia-utils:
+32bit application support for nvidia driver</h4>
+<ol type="1">
+<li><p>btrfs-progs: BTRFS utilities</p></li>
+<li><p>soft-firmware: Sound Open Firmware</p></li>
+<li><p>networkmanager: Network Manager</p></li>
+<li><p>grub: grub bootloader</p></li>
+<li><p>efibootmgr: efi utilities needed for grub UEFI boot</p></li>
+<li><p>yay: AUR package manager</p></li>
+<li><p>lightdm: login manager</p></li>
+<li><p>lightdm-webkit2-greeter: login manager greeter</p></li>
+<li><p>lightdm-webkit-theme-aether: greeter theme</p></li>
+</ol>
+<h4 id="add-a-pacman-hook-for-nvidia-upgrades">Add a pacman hook for
+nvidia upgrades</h4>
+<p><code>nano /etc/pacman.d/hooks/nvidia.hook</code></p>
+<p>[Trigger]</p>
+<p>Operation=Install</p>
+<p>Operation=Upgrade</p>
+<p>Operation=Remove</p>
+<p>Type=Package</p>
+<p># You can remove package(s) that don't apply to your config, e.g. if
+you only use nvidia-open you can remove nvidia-lts as a Target</p>
+<p>Target=nvidia</p>
+<p>Target=nvidia-open</p>
+<p>Target=nvidia-lts</p>
+<p># If running a different kernel, modify below to match</p>
+<p>Target=linux</p>
+<p>[Action]</p>
+<p>Description=Updating NVIDIA module in initcpio</p>
+<p>Depends=mkinitcpio</p>
+<p>When=PostTransaction</p>
+<p>NeedsTargets</p>
+<p>Exec=/bin/sh -c 'while read -r trg; do case $trg in linux*) exit 0;
+esac; done; /usr/bin/mkinitcpio -P'</p>
+<h4 id="create-hostname">Create hostname</h4>
+<p><code>nano /etc/hostname</code></p>
+<h4 id="recreate-initramfs-in-case">Recreate initramfs in case</h4>
+<p><code>mkinitcpio -P</code></p>
+<h4 id="set-root-password">set root password</h4>
+<p><code>passwd</code></p>
+<h4 id="grub-configuration">grub configuration</h4>
+<pre><code>grub-install --target=x86_64-efi --efi-directory=/boot/efi
+--bootloader-id=GRUB</code></pre>
+<p><code>grub-mkconfig -o /etc/grub/grub.cfg</code></p>
+<p><strong>Reboot to the new system</strong></p>
+</body>
+</html>
